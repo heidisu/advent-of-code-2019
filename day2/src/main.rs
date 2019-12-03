@@ -6,7 +6,7 @@ use std::fs;
 fn file_to_vec(filename: String) -> io::Result<Vec<i32>> {
     let file_in = fs::File::open(filename)?;
     let file_reader = BufReader::new(file_in);
-    let rows : Vec<String> = file_reader.lines().filter_map(io::Result::ok).map(|x| x.parse::<String>().expect("parse error")).collect();
+    let rows : Vec<String> = file_reader.lines().filter_map(io::Result::ok).collect();
     let v: Vec<i32> = rows[0].split(",").map(|x| x.parse::<i32>().expect("parse error")).collect();
 
     return Ok(v);
@@ -18,20 +18,19 @@ fn run_program(program: &mut Vec<i32>) {
     
     while !done {
         let opcode = program[index];
-        if opcode == 1 {
+        if opcode == 1 || opcode == 2 {
             let idx1 = program[index + 1];
             let idx2 = program[index + 2];
             let idx3 = program[index + 3];
-            program[idx3 as usize] = program[idx1 as usize] + program[idx2 as usize];
+            program[idx3 as usize] = 
+                if opcode == 1 {
+                    program[idx1 as usize] + program[idx2 as usize]
+                }
+                else {
+                    program[idx1 as usize] * program[idx2 as usize]
+                };
             index += 4;
         } 
-        else if opcode == 2 {
-            let idx1 = program[index + 1];
-            let idx2 = program[index + 2];
-            let idx3 = program[index + 3];
-            program[idx3 as usize] = program[idx1 as usize] * program[idx2 as usize];
-            index += 4;
-        }
         else {
             done = true;
         }
