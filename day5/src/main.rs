@@ -91,13 +91,14 @@ fn run_program(program: &mut Vec<i32>, input: i32) -> i32{
                 index += 4;
             },
             3 => {
-                let idx = program[index + 1];
-                program[idx as usize] = input;
+                let mode1 = instruction.modes[&1];
+                let idx = get_index(index + 1, mode1, program);
+                program[idx] = input;
                 index += 2;
             },
             4 => {
-                let idx = program[index + 1];
-                output = program[idx as usize];
+                let mode1 = instruction.modes[&1];
+                output = get_value(index + 1, mode1, program);
                 index += 2;
             },
             5 => {
@@ -192,7 +193,6 @@ mod tests {
         assert_eq!(result, 1);
     }
 
-    /* Test does not work for some unknown reason
     #[test]
     fn example_program_input_less_than_8(){
     let program = vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,
@@ -200,7 +200,7 @@ mod tests {
             999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99];
         let result = start_program(&program, 0);
         assert_eq!(result, 999);
-    }*/
+    }
 
     #[test]
     fn example_program_input_equal_8(){
