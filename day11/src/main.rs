@@ -19,19 +19,25 @@ enum Direction {
     Right
 }
 
+#[derive(Debug)]
+struct Instruction {
+    code: i64,
+    modes: HashMap<i64, Mode>
+}
+
+#[derive(Debug)]
+struct ProgramState {
+    relative_base: i64,
+    index: i64
+}
+
 fn int_to_mode(mode: &i64)-> Mode{
     return match mode {
         0 => Mode::Position,
         1 => Mode::Intermediate,
         2 => Mode::Relative,
-        _ => panic!("Unknown mode")
+        _ => panic!("Unknown mode {:?}")
     };
-}
-
-#[derive(Debug)]
-struct Instruction {
-    code: i64,
-    modes: HashMap<i64, Mode>
 }
 
 fn parse_instruction(instruction: i64) -> Instruction {
@@ -80,13 +86,12 @@ struct Program<'a> {
     index: i64
 }
 
-fn step_program(prg: Program, input: i64) -> (Program, Vec<i64>){
-    let mut index = prg.index;
+fn step_program(program: &mut HashMap<i64, i64>, program_state: &ProgramState, input: i64) -> (ProgramState, Vec<i64>){
+    let mut index = program_state.index;
+    let mut relative_base = program_state.relative_base;
     let mut done = false;
-    let mut program = prg.program;
     let mut input_used = false;
     let mut output = Vec::new();
-    let mut relative_base = 0;
     
     while !done {
         let instruction = parse_instruction(program[&index]);
@@ -110,27 +115,19 @@ fn step_program(prg: Program, input: i64) -> (Program, Vec<i64>){
                 index += 4;
             },
             3 => {
-                //if !input_used{
+                if !input_used{
                 let idx = get_index(index + 1, mode1, &relative_base, program);
                 program.insert(idx, input);
                 index += 2;
-                /*input_used = true;
+                input_used = true;
                 } else {
-                    return (Program{ program: program, index: index}, output);
-                }*/
+                    return (ProgramState{index : index, relative_base: relative_base}, output);
+                }
             },
             4 => {
                 let mode1 = &instruction.modes[&1];
-                let val = get_value(index +1, mode1, &relative_base, program);
                 output.push(get_value(index +1, mode1, &relative_base, program));
                 index += 2;
-                if output.len() == 2 {
-                 //   output.push(get_value(index +1, mode1, &relative_base, program));
-                  //  index += 2;
-                   return (Program{ program: program, index: index}, output);
-                } /*else {
-                    return (Program{ program: program, index: index}, output);
-                }*/
             },
             5 => {
                 let val1 = get_value(index + 1, mode1, &relative_base, program);
@@ -186,7 +183,7 @@ fn step_program(prg: Program, input: i64) -> (Program, Vec<i64>){
         }
     }
 
-    return (Program{program: program, index: index}, output);
+    return (ProgramState {index: index, relative_base: relative_base}, output);
 } 
 
 // 0 = left , 1 = right
@@ -221,18 +218,18 @@ fn start_painting_robot(program: &Vec<i64>, start_paint: i64)-> HashMap<(i64, i6
 
     let mut point = (0, 0);
     let mut direction = Direction::Up;
-    let mut index = 0;
+    let mut program_state = ProgramState { index: 0, relative_base: 0 };
     let mut paint = start_paint;
     let mut painting: HashMap<(i64, i64), i64>= HashMap::new();
 
     loop {
-        let (prog, output) = step_program(Program{program: &mut map, index: index}, paint);
+        let (new_program_state, output) = step_program(&mut map, &program_state, paint);
         if output.len() == 0{
             break;
         }
         let new_paint = output[0];
         let new_dir = output[1];
-        index = prog.index;
+        program_state = new_program_state;
         painting.insert(point, new_paint);
         direction = new_direction(&direction, new_dir);
         point = new_point(point, &direction);
@@ -260,26 +257,17 @@ fn print_painting(painting: HashMap<(i64, i64), i64>){
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-   
-}
-
-
 // Task 1: 2418
-// Task 2: 
+// Task 2: GREJALPR
 fn main() {
     let row = file_to_vec("data.txt");
     match row {
     Ok(numbers) => {
-       let painting = start_painting_robot(&numbers, 0);
+        let painting = start_painting_robot(&numbers, 0);
         println!("Task 1: {:?}", painting.len());
         let painting_2 = start_painting_robot(&numbers, 1);
+        println!("Task 2:");
         print_painting(painting_2);
-  //     let answer2 = start_program(&numbers, 2);
-   //     println!("Task 2: {:?}", answer2);
     },
     Err(e) => println!("Error reading file: {:?}", e)
     }   
