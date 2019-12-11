@@ -12,7 +12,7 @@ fn file_to_points(filename: &str) -> io::Result<Vec<(i32, i32)>> {
     for (i, row) in rows.iter().enumerate(){
         for (j, c) in row.chars().enumerate(){
             if c == '#'{
-                points.push((i as i32, j as i32));
+                points.push((j as i32, i as i32));
             }
         }
     }
@@ -86,36 +86,37 @@ fn atan2((x, y): (i32, i32))->f32{
     return (x as f32).atan2(y as f32);
 }
 
-// does not work
-fn vaporize(max_point: &(i32, i32), points: &Vec<(i32, i32)>){
+// something is mized with sign of slope, instead of starting up and rotate clockwise, 
+// this function start at downwards pointing vector  and move counter clockwise
+fn vaporize(max_point: &(i32, i32), points: &Vec<(i32, i32)>)->HashMap<i32, AsteroideData>{
+    let mut result = HashMap::new();
     let data : Vec<_> = 
             points.iter().filter (|x| *x != max_point).map (|p| get_asteroide_data(max_point, p)).collect();   
     let groups = group_asteroides(&data);
     let mut copy_groups = groups.clone();
     let mut sorted_keys = groups.keys().collect::<Vec<_>>();
     sorted_keys.sort_by(|x, y| atan2(x.slope).partial_cmp(&atan2(y.slope)).unwrap());
-    let mut index = sorted_keys.iter().position(|x| { let (a, _) = x.slope; return a == 0}).unwrap();
+    let mut index = sorted_keys.iter().position(|x| { let (a, b) = x.slope; return a == 0 && b < 0}).unwrap();
     let mut counter = 1;
-    println!("index {:?}", index);
-    while counter <= 200 && index < sorted_keys.len() {
+    while counter <= 200 {
         let key = sorted_keys[index];
         let values = copy_groups.get_mut(&key).unwrap();
-        values.sort_by(|x, y| x.distance.cmp(&y.distance));
+        values.sort_by(|x, y| y.distance.cmp(&x.distance));
         match values.pop(){
             Some(asteroide) => {
-                println!("Counter: {:?}, Value: {:?}", counter, asteroide);
+                result.insert(counter, asteroide);
                 counter += 1;
             },
             None => ()
         }
-        if index == sorted_keys.len() - 1 {
-            index = 0;
+        if index == 0 {
+            index = sorted_keys.len() - 1;
         }
         else {
-            index += 1;
+            index -= 1;
         }
     }
-    println!("sorted: {:?}", index);
+    return result;
 }
 
 #[cfg(test)]
@@ -160,7 +161,8 @@ mod tests {
     #[test]
     fn test_example_3(){
         let points = file_to_points("test_3.txt").unwrap();
-        let (_, max) = max_asteroides(&points);
+        let (max_point, max) = max_asteroides(&points);
+        assert_eq!(max_point, (6, 3));
         assert_eq!(max, 41);
     }
 
@@ -168,38 +170,34 @@ mod tests {
     #[test]
     fn test_example_4(){
         let points = file_to_points("test_4.txt").unwrap();
-        let (_, max) = max_asteroides(&points);
+        let (max_point, max) = max_asteroides(&points);
+        assert_eq!(max_point, (11, 13));
         assert_eq!(max, 210);
     }
 
-    //#[test]
+    #[test]
     fn test_vaporize(){
         let points = file_to_points("test_4.txt").unwrap();
         let (pnt, _) = max_asteroides(&points);
-        vaporize(&pnt, &points);
-    }
-
-
-    //#[test]
-    fn test_vaporize_2(){
-        let points = file_to_points("test_3.txt").unwrap();
-        let (pnt, _) = max_asteroides(&points);
-        vaporize(&pnt, &points);
+        let result  =vaporize(&pnt, &points);
+        assert_eq!(result[&1].point, (11, 12));
+        assert_eq!(result[&10].point, (12, 8));
+        assert_eq!(result[&50].point, (16, 9));
+        assert_eq!(result[&200].point, (8, 2));
     }
 }
 
 
 // Task 1: 282
-// Task 2: ???
+// Task 2: (10, 8) => 1008
 fn main() {
      match file_to_points("data.txt") {
         Ok(points) => {
             let (pnt, task1) = max_asteroides(&points);
             println!("Task 1: {:?}", task1);
-          //  let image = decode_image(&layers);
-            let task2 = vaporize(&pnt, &points);
-           println!("Task 2: {:?}", task2);
-           // print_image(&image, rows, cols)
+            let result = vaporize(&pnt, &points);
+            let asteroide = result[&200];
+           println!("Task 2: {:?}", asteroide.point);
         },
         Err(_) => println!("Error reading file")
     }
