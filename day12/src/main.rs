@@ -59,24 +59,13 @@ fn get_total_energy(moons: &Vec<Moon>)->i32{
 // way too slow
 fn get_history_repeats_itself(moons: &Vec<Moon>)->i32{
     let mut counter = 0;
-    let mut energy_to_moons: HashMap<i32, HashSet<_>> = HashMap::new();
+    let mut states: HashSet<_> = HashSet::new();
     let mut moons = moons.to_vec();
     loop {
         let new_moons = step_all(&moons, 1);
-        let total_energy = get_total_energy(&new_moons);
-        let tuples = (new_moons[0], new_moons[1], new_moons[2], new_moons[3]);
-        match energy_to_moons.get_mut(&total_energy) {
-            Some(moon_set) => {
-                if moon_set.contains(&tuples){
-                    return counter;
-                }
-                moon_set.insert(tuples);
-            },
-            None => {
-                let mut set = HashSet::new();
-                set.insert(tuples);
-                energy_to_moons.insert(total_energy, set);
-            }
+        let tuple = (new_moons[0], new_moons[1], new_moons[2], new_moons[3]);
+        if !states.insert(tuple){
+            return counter;
         }
         moons = new_moons;
         counter += 1;
